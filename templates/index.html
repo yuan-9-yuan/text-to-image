@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 文生图</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 min-h-screen">
+    <div class="max-w-2xl mx-auto px-4 py-12">
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                AI 文生图
+            </h1>
+            <p class="text-gray-500 mt-2">输入文字描述，AI 为你生成图片</p>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl p-6 mb-8">
+            <div class="flex gap-3">
+                <input
+                    id="promptInput"
+                    type="text"
+                    placeholder="输入图片描述，如：一只在星空下奔跑的白色独角兽"
+                    class="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent text-sm"
+                    maxlength="500"
+                />
+                <button
+                    id="generateBtn"
+                    onclick="generate()"
+                    class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap"
+                >
+                    生成
+                </button>
+            </div>
+        </div>
+
+        <div id="resultArea" class="hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800">生成结果</h2>
+                    <span id="promptDisplay" class="text-sm text-gray-400 max-w-xs truncate"></span>
+                </div>
+                <div id="imageContainer" class="bg-gray-50 rounded-xl overflow-hidden">
+                    <img id="resultImage" src="" alt="生成的图片" class="w-full h-auto"/>
+                </div>
+                <div class="mt-4 flex gap-2">
+                    <button
+                        onclick="downloadImage()"
+                        id="downloadBtn"
+                        class="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                    >
+                        下载图片
+                    </button>
+                    <button
+                        onclick="copyImage()"
+                        id="copyBtn"
+                        class="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                    >
+                        复制图片
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingArea" class="hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-8 text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200 border-t-indigo-600 mx-auto mb-4"></div>
+                <p class="text-gray-600 font-medium">正在生成图片，请稍候...</p>
+                <p class="text-gray-400 text-sm mt-1">大约需要 10-30 秒</p>
+            </div>
+        </div>
+
+        <div id="errorArea" class="hidden">
+            <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm" id="errorMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentImageUrl = '';
+
+        async function generate() {
+            const prompt = document.getElementById('promptInput').value.trim();
+            if (!prompt) {
+                showError('请输入文字描述');
+                return;
+            }
+
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = '生成中...';
+
+            hideAll();
+            document.getElementById('loadingArea').classList.remove('hidden');
+
+            try {
+                const res = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    showError(data.error || '生成失败');
+                    return;
+                }
+
+                currentImageUrl = data.image_url;
+                document.getElementById('resultImage').src = currentImageUrl;
+                document.getElementById('promptDisplay').textContent = data.prompt;
+                document.getElementById('resultArea').classList.remove('hidden');
+            } catch (err) {
+                showError('网络错误，请检查连接后重试');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '生成';
+                document.getElementById('loadingArea').classList.add('hidden');
+            }
+        }
+
+        async function downloadImage() {
+            if (!currentImageUrl) return;
+            try {
+                const res = await fetch(currentImageUrl);
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ai-image-${Date.now()}.png`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch {
+                window.open(currentImageUrl, '_blank');
+            }
+        }
+
+        async function copyImage() {
+            if (!currentImageUrl) return;
+            try {
+                const res = await fetch(currentImageUrl);
+                const blob = await res.blob();
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+                alert('图片已复制到剪贴板');
+            } catch {
+                prompt('复制图片链接：', currentImageUrl);
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('errorMessage').textContent = msg;
+            document.getElementById('errorArea').classList.remove('hidden');
+        }
+
+        function hideAll() {
+            ['resultArea', 'loadingArea', 'errorArea'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+        }
+
+        document.getElementById('promptInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') generate();
+        });
+    </script>
+</body>
+</html>

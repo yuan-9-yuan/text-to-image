@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 生成记录</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">管理后台</h1>
+                <p class="text-gray-500 text-sm mt-1">共 {{ rows|length }} 条生成记录</p>
+            </div>
+            <a href="/admin/logout"
+                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors">
+                退出登录
+            </a>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-100">
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">ID</th>
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">文字描述 (Prompt)</th>
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">生成图片</th>
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">时间</th>
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">IP</th>
+                            <th class="text-left px-4 py-3 font-medium text-gray-500">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if rows %}
+                        {% for row in rows %}
+                        <tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                            <td class="px-4 py-3 text-gray-400 font-mono text-xs">{{ row.id }}</td>
+                            <td class="px-4 py-3 max-w-xs">
+                                <p class="text-gray-800 truncate" title="{{ row.prompt }}">{{ row.prompt }}</p>
+                            </td>
+                            <td class="px-4 py-3">
+                                {% if row.image_url %}
+                                <a href="{{ row.image_url }}" target="_blank" class="block group">
+                                    <img src="{{ row.image_url }}" alt="生成图片"
+                                        class="w-16 h-16 object-cover rounded-lg border border-gray-100 group-hover:opacity-80 transition-opacity" />
+                                </a>
+                                {% else %}
+                                <span class="text-gray-400">生成失败</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{{ row.created_at }}</td>
+                            <td class="px-4 py-3">
+                                <span class="font-mono text-xs text-gray-400">{{ row.ip_address or '未知' }}</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <button onclick="deleteRecord({{ row.id }})"
+                                    class="text-red-400 hover:text-red-600 text-xs transition-colors">
+                                    删除
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="px-4 py-12 text-center text-gray-400">
+                                暂无生成记录
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function deleteRecord(id) {
+            if (!confirm('确定要删除这条记录吗？')) return;
+            try {
+                const res = await fetch(`/admin/api/generations/${id}`, { method: 'DELETE' });
+                if (res.ok) location.reload();
+                else alert('删除失败');
+            } catch {
+                alert('删除失败');
+            }
+        }
+    </script>
+</body>
+</html>
