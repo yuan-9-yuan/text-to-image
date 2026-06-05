@@ -73,8 +73,7 @@ def generate():
             json={
                 'model': API_MODEL,
                 'prompt': prompt,
-                'size': '1024x768',
-                'response_format': 'url'
+                'size': '1024x768'
             },
             timeout=120
         )
