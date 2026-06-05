@@ -42,13 +42,9 @@ def admin_required(f):
 
 init_db()
 
-# ─── 用户页面 ─────────────────────────────────
-
 @app.route('/')
 def index():
     return render_template('index.html')
-
-# ─── 生成图片 API ─────────────────────────────
 
 API_BASE = os.environ.get('API_BASE_URL', 'https://apihub.agnes-ai.com')
 API_MODEL = os.environ.get('API_MODEL', 'agnes-image-2.1-flash')
@@ -78,16 +74,17 @@ def generate():
                 'model': API_MODEL,
                 'prompt': prompt,
                 'size': '1024x768',
-                'extra_body': {
-                    'response_format': 'url'
-                }
+                'response_format': 'url'
             },
             timeout=120
         )
 
         if not resp.ok:
             status = resp.status_code
-            detail = resp.json().get('error', {}).get('message', resp.text)
+            try:
+                detail = resp.json().get('error', {}).get('message', resp.text)
+            except Exception:
+                detail = resp.text[:500]
             if status == 401:
                 return jsonify({'error': 'API 密钥无效'}), 401
             if status == 429:
@@ -113,8 +110,6 @@ def generate():
         return jsonify({'error': '生成超时，请稍后重试'}), 504
     except Exception as e:
         return jsonify({'error': f'生成失败: {str(e)}'}), 500
-
-# ─── 管理后台 ──────────────────────────────────
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
